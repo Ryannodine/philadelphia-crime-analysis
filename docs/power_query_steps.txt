@@ -1,0 +1,66 @@
+=== Query: Philadelphia_Crime_2015_2025 ===
+
+let
+    Source = Folder.Files("C:\path\to\raw_csvs"),
+    #"Filtered Hidden Files1" = Table.SelectRows(Source, each [Attributes]?[Hidden]? <> true),
+    #"Invoke Custom Function1" = Table.AddColumn(#"Filtered Hidden Files1", "Transform File", each #"Transform File"([Content])),
+    #"Renamed Columns1" = Table.RenameColumns(#"Invoke Custom Function1", {"Name", "Source.Name"}),
+    #"Removed Other Columns1" = Table.SelectColumns(#"Renamed Columns1", {"Source.Name", "Transform File"}),
+    #"Expanded Table Column1" = Table.ExpandTableColumn(#"Removed Other Columns1", "Transform File", Table.ColumnNames(#"Transform File"(#"Sample File"))),
+    #"Changed Type" = Table.TransformColumnTypes(#"Expanded Table Column1",{{"Source.Name", type text}, {"objectid", Int64.Type}, {"dc_dist", Int64.Type}, {"psa", Int64.Type}, {"dispatch_date_time", type datetime}, {"dispatch_date", type date}, {"dispatch_time", type time}, {"hour", Int64.Type}, {"dc_key", Int64.Type}, {"location_block", type text}, {"ucr_general", Int64.Type}, {"text_general_code", type text}, {"point_x", type number}, {"point_y", type number}, {"gdb_geomattr_data", type any}, {"lat", type number}, {"lng", type number}}),
+    #"Added Conditional Column" = Table.AddColumn(#"Changed Type", "Offense Group", each if [ucr_general] = 400 then "Aggravated Assault" else if [ucr_general] = 300 then "Robbery" else [text_general_code]),
+    #"Inserted Day Name" = Table.AddColumn(#"Added Conditional Column", "Day Name", each Date.DayOfWeekName([dispatch_date]), type text),
+    #"Inserted Year" = Table.AddColumn(#"Inserted Day Name", "Year", each Date.Year([dispatch_date]), Int64.Type),
+    #"Added Custom" = Table.AddColumn(#"Inserted Year", "hour_final", each if [hour] <> null then [hour] else Time.Hour(Time.From([dispatch_time]))),
+    #"Changed Type1" = Table.TransformColumnTypes(#"Added Custom",{{"hour_final", Int64.Type}}),
+    #"Filtered Rows" = Table.SelectRows(#"Changed Type1", each [Year] >= 2015),
+    #"Added Custom2" = Table.AddColumn(#"Filtered Rows", "lat_final", each if [lat] <> null then [lat] else [point_y]),
+    #"Added Custom3" = Table.AddColumn(#"Added Custom2", "lng_final", each if [lng] <> null then [lng] else [point_x]),
+    #"Changed Type3" = Table.TransformColumnTypes(#"Added Custom3",{{"lat_final", type number}, {"lng_final", type number}}),
+    #"Added Custom4" = Table.AddColumn(#"Changed Type3", "has_coords_final", each if [lat_final] <> null and [lng_final] <> null and [lat_final] > 39.8 and [lat_final] < 40.2 and [lng_final] > -75.4 and [lng_final] < -74.8 then 1 else 0),
+    #"Changed Type4" = Table.TransformColumnTypes(#"Added Custom4",{{"has_coords_final", Int64.Type}})
+in
+    #"Changed Type4"
+
+
+
+=== Query: AA_2023_2025 ===
+
+let
+    Source = Philidelphia_Crime_2015_2025,
+    #"Filtered Rows" = Table.SelectRows(Source, each ([Offense Group] = "Aggravated Assault")),
+    #"Filtered Rows1" = Table.SelectRows(#"Filtered Rows", each [Year] >= 2023),
+    #"Filtered Rows2" = Table.SelectRows(#"Filtered Rows1", each true),
+    #"Filtered Rows3" = Table.SelectRows(#"Filtered Rows2", each [has_coords_final] = 1),
+    #"Removed Other Columns" = Table.SelectColumns(#"Filtered Rows3",{"dc_dist", "psa", "dispatch_date", "dc_key", "location_block", "text_general_code", "Offense Group", "Day Name", "Year", "hour_final", "lat_final", "lng_final"}),
+    #"Changed Type" = Table.TransformColumnTypes(#"Removed Other Columns",{{"dc_key", type text}}),
+    #"Added Custom" = Table.AddColumn(#"Changed Type", "dist_current", each if [dc_dist] = 6 then 9 else [dc_dist])
+in
+    #"Added Custom"
+
+=== Query: MVT_2023_2025 ===
+
+let
+    Source = Philidelphia_Crime_2015_2025,
+    #"Filtered Rows" = Table.SelectRows(Source, each [Offense Group] = "Motor Vehicle Theft"),
+    #"Filtered Rows1" = Table.SelectRows(#"Filtered Rows", each [Year] >= 2023),
+    #"Filtered Rows2" = Table.SelectRows(#"Filtered Rows1", each ([has_coords_final] = 1)),
+    #"Removed Other Columns" = Table.SelectColumns(#"Filtered Rows2",{"dc_dist", "psa", "dispatch_date", "dc_key", "location_block", "text_general_code", "Offense Group", "Day Name", "Year", "hour_final", "lat_final", "lng_final"}),
+    #"Changed Type" = Table.TransformColumnTypes(#"Removed Other Columns",{{"dc_key", type text}}),
+    #"Added Custom" = Table.AddColumn(#"Changed Type", "dist_current", each if [dc_dist] = 6 then 9 else [dc_dist])
+in
+    #"Added Custom"
+
+=== Query: MVT_2019 ===
+
+let
+    Source = Philidelphia_Crime_2015_2025,
+    #"Filtered Rows" = Table.SelectRows(Source, each [Offense Group] = "Motor Vehicle Theft"),
+    #"Filtered Rows1" = Table.SelectRows(#"Filtered Rows", each [Year] = 2019),
+    #"Filtered Rows2" = Table.SelectRows(#"Filtered Rows1", each [has_coords_final] = 1),
+    #"Changed Type" = Table.TransformColumnTypes(#"Filtered Rows2",{{"dc_key", type text}}),
+    #"Removed Other Columns" = Table.SelectColumns(#"Changed Type",{"dc_dist", "psa", "dispatch_date", "dc_key", "location_block", "text_general_code", "Offense Group", "Day Name", "Year", "hour_final", "lat_final", "lng_final"}),
+    #"Added Custom" = Table.AddColumn(#"Removed Other Columns", "dist_current", each if [dc_dist] = 6 then 9 else [dc_dist])
+in
+    #"Added Custom"
+
